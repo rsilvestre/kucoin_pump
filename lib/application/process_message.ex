@@ -140,9 +140,9 @@ defmodule Application.ProcessMessage do
           any_printed
         end
 
-      if any_printed do
-        IO.puts("\n")
-      end
+      # if any_printed do
+      #  IO.puts("\n")
+      # end
     end
 
     :ok
