@@ -1,4 +1,4 @@
-defmodule Stack do
+defmodule Storage.Stack do
   @moduledoc """
   https://elixir-lang.org/getting-started/mix-otp/genserver.html
   """

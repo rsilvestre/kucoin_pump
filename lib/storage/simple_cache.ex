@@ -1,6 +1,7 @@
 defmodule Storage.SimpleCache do
   @moduledoc """
   A simple ETS based cache for expensive function calls.
+  https://elixirschool.com/en/lessons/storage/ets
   """
 
   @doc """
@@ -23,7 +24,7 @@ defmodule Storage.SimpleCache do
     {:ok, auth_table_pid}
   end
 
-  @spec! get(mod :: module, fun :: atom, args :: list, opts :: Keyword.t) :: any
+  @spec! get(mod :: module, fun :: atom, args :: list, opts :: Keyword.t()) :: any
   def get(mod, fun, args, opts \\ []) do
     case lookup(mod, fun, args) do
       nil ->

@@ -1,15 +1,15 @@
-defmodule Message do
-
+defmodule Models.Message do
   use TypeCheck
 
   @enforce_keys [:subject, :time, :size, :price]
-  defstruct [subject: nil, time: nil, size: nil, price: nil]
+  defstruct subject: nil, time: nil, size: nil, price: nil
+
   @type! t() :: %__MODULE__{
-          subject: String.t(),
-          time: DateTime.t(),
-          size: integer(),
-          price: float(),
-        }
+           subject: String.t(),
+           time: DateTime.t(),
+           size: integer(),
+           price: float()
+         }
 
   @spec! new(map()) :: %__MODULE__{}
   def new(%{subject: subject, time: time, size: size, price: price}) do
@@ -17,7 +17,7 @@ defmodule Message do
       subject: subject,
       time: time,
       size: size,
-      price: price,
+      price: price
     }
   end
 
@@ -46,12 +46,15 @@ defmodule Message do
   end
 
   defimpl Inspect do
-    def inspect(%Message{
-      subject: subject,
-      time: time,
-      size: size,
-      price: price,
-    }, _) do
+    def inspect(
+          %Models.Message{
+            subject: subject,
+            time: time,
+            size: size,
+            price: price
+          },
+          _
+        ) do
       "Subject:#{subject}\t Time:#{time}\t Size:#{size}\t Price:#{price}\t"
     end
   end

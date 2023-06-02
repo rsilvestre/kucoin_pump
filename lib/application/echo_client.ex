@@ -1,20 +1,34 @@
-defmodule EchoClient do
+defmodule Application.EchoClient do
+  alias Models.Message
+  alias Application.ProcessMessage
+
+  use TypeCheck
   use WebSockex
   require Logger
 
-  #@echo_server "wss://echo.websocket.org/?encoding=text"
+  @api_base_url Application.compile_env(:kucoin_pump, :api_base_url)
+
+  # @echo_server "wss://echo.websocket.org/?encoding=text"
   def start_link(product \\ "all", opts \\ []) do
     socket_opts = [
       ssl_options: [
         ciphers: :ssl.cipher_suites(:all, :"tlsv1.3")
       ]
     ]
+
     opts = Keyword.merge(opts, socket_opts)
-    #WebSockex.start_link(@echo_server, __MODULE__, %{}, opts)
+    # WebSockex.start_link(@echo_server, __MODULE__, %{}, opts)
     {:ok, {endpoint, token, now}} = get_token()
     url = "#{endpoint}?token=#{token}&connectId=#{now}"
-    #{:ok, pid} = WebSockex.start_link(url, __MODULE__, %{}, opts)
-    {:ok, pid} = WebSockex.start_link(url, __MODULE__, %{most_recent_pong: System.system_time(:second)}, opts)
+    # {:ok, pid} = WebSockex.start_link(url, __MODULE__, %{}, opts)
+    {:ok, pid} =
+      WebSockex.start_link(
+        url,
+        __MODULE__,
+        %{most_recent_pong: System.system_time(:second)},
+        opts
+      )
+
     :timer.send_interval(15_000, pid, :send_ping)
     subscribe(pid, product)
     {:ok, pid}
@@ -23,27 +37,27 @@ defmodule EchoClient do
   @impl WebSockex
   def handle_connect(_conn, state) do
     Logger.info("Connected to Echo server")
-    #params = {:text, %{type: "subscribe", topic: "/market/ticker:all", response: true} |> Poison.encode! |> String.to_charlist}
-    #Logger.info("Sending #{inspect params}")
-    #WebSockex.Conn.socket_send(conn, params)
+
+    # params = {:text, %{type: "subscribe", topic: "/market/ticker:all", response: true} |> Poison.encode! |> String.to_charlist}
+    # Logger.info("Sending #{inspect params}")
+    # WebSockex.Conn.socket_send(conn, params)
     {:ok, state}
   end
 
   def subscribtion_frame(product \\ "all") do
+    subscription_msg =
+      %{
+        type: "subscribe",
+        topic: "/market/ticker:#{product}",
+        response: true
+      }
+      |> Poison.encode!()
 
-    subscription_msg = %{
-
-      type: "subscribe",
-      topic: "/market/ticker:#{product}",
-      response: true,
-
-    } |> Poison.encode!
-
-      {:text, subscription_msg}
+    {:text, subscription_msg}
   end
 
   def subscribe(pid, product \\ "all") do
-    WebSockex.send_frame pid, subscribtion_frame(product)
+    WebSockex.send_frame(pid, subscribtion_frame(product))
   end
 
   @impl WebSockex
@@ -66,7 +80,7 @@ defmodule EchoClient do
 
   @impl WebSockex
   def handle_pong(:pong, state) do
-    #Logger.info("Pong received")
+    # Logger.info("Pong received")
     {:ok, %{state | most_recent_pong: System.system_time(:second)}}
   end
 
@@ -78,7 +92,7 @@ defmodule EchoClient do
 
   @impl WebSockex
   def handle_frame({:text, %{id: _id, type: "welcome"} = msg}, state) do
-    Logger.info("Toto server says, #{inspect msg}")
+    Logger.info("Toto server says, #{inspect(msg)}")
     {:ok, state}
   end
 
@@ -93,64 +107,69 @@ defmodule EchoClient do
 
   def handle_msg(%{"type" => "message"} = body, state) do
     try do
-      #Logger.info("Echo server says, #{inspect Types.type_of(body)}")
-      #Logger.info("Echo server says, #{inspect(body)}")
-      if MapSet.member?(Storage.SimpleCache.get(ElixirKucoinPump, :get_futures, []), String.replace(Map.get(body, "subject"), "-", "")) do
-        #Logger.info("In set: #{inspect Map.get(body, "subject")}")
+      # Logger.info("Echo server says, #{inspect Types.type_of(body)}")
+      # Logger.info("Echo server says, #{inspect(body)}")
+      if MapSet.member?(
+           Storage.SimpleCache.get(Application.KucoinPump, :get_futures, []),
+           String.replace(Map.get(body, "subject"), "-", "")
+         ) do
+        # Logger.info("In set: #{inspect Map.get(body, "subject")}")
         body
         |> Message.from_json_to_message()
         |> ProcessMessage.process_message()
-        #|> Logger.info()
-      #else
-        #Logger.info("Not in set: #{inspect Map.get(body, "subject")}")
+
+        # |> Logger.info()
+        # else
+        # Logger.info("Not in set: #{inspect Map.get(body, "subject")}")
       end
     rescue
       e ->
-        Logger.error("Error parsing message: #{inspect body}")
-        Logger.error("Error: #{inspect e}")
+        Logger.error("Error parsing message: #{inspect(body)}")
+        Logger.error("Error: #{inspect(e)}")
         exit(:normal)
     end
 
-    #Logger.info("Echo server says, #{msg}")
+    # Logger.info("Echo server says, #{msg}")
     {:ok, state}
   end
 
   def handle_msg(msg, state) do
-    Logger.info("Echo server says, #{inspect msg}")
+    Logger.info("Echo server says, #{inspect(msg)}")
     {:ok, state}
   end
 
   @impl WebSockex
   def handle_disconnect(%{reason: reason}, state) do
-    Logger.info("Disconnect with reason: #{inspect reason}")
+    Logger.info("Disconnect with reason: #{inspect(reason)}")
     {:ok, state}
   end
 
   @impl WebSockex
   def terminate(reason, state) do
-    IO.puts("\nSocket Terminating:\n#{inspect reason}\n\n#{inspect state}\n")
+    IO.puts("\nSocket Terminating:\n#{inspect(reason)}\n\n#{inspect(state)}\n")
     exit(:normal)
   end
 
-
-  @spec get_token() :: {:ok, {String.t, String.t, integer}}
+  @spec get_token() :: {:ok, {String.t(), String.t(), integer}}
   defp get_token do
-    options = [] #[ssl: [{:versions, [:'tlsv1.2']}], recv_timeout: 500]
+    # [ssl: [{:versions, [:'tlsv1.2']}], recv_timeout: 500]
+    options = []
+
     {
       :ok,
       %HTTPoison.Response{status_code: 200, body: body}
-    } = HTTPoison.post("https://api.kucoin.com/api/v1/bullet-public", [], options)
+    } = HTTPoison.post("#{@api_base_url}/api/v1/bullet-public", [], options)
 
-    data = body |> Poison.decode! |> Map.get("data") #|> Map.get("token")
+    # |> Map.get("token")
+    data = body |> Poison.decode!() |> Map.get("data")
 
     {
       :ok,
       {
         data |> Map.get("instanceServers") |> Enum.at(0) |> Map.get("endpoint"),
         data |> Map.get("token"),
-        DateTime.to_unix(DateTime.utc_now(), :millisecond),
+        DateTime.to_unix(DateTime.utc_now(), :millisecond)
       }
     }
   end
-
 end

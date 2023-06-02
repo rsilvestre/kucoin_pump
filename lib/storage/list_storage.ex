@@ -1,5 +1,4 @@
 defmodule Storage.ListStorage do
-
   use TypeCheck
   use GenServer
 

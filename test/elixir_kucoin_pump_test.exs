@@ -1,8 +1,8 @@
-defmodule ElixirKucoinPumpTest do
+defmodule KucoinPumpTest do
   use ExUnit.Case
-  doctest ElixirKucoinPump
+  doctest KucoinPump
 
   test "greets the world" do
-    assert ElixirKucoinPump.hello() == :world
+    assert KucoinPump.hello() == :world
   end
 end

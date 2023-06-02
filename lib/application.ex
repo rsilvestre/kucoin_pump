@@ -1,5 +1,4 @@
-defmodule ElixirKucoinPump.Application do
-
+defmodule KucoinPump.Application do
   @moduledoc false
 
   use Application
@@ -7,23 +6,31 @@ defmodule ElixirKucoinPump.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      #{Storage.EtsService, []},
-      #{Storage.MapStorage, []},
+      # {Storage.EtsService, []},
+      # {Storage.MapStorage, []},
       %{
         id: PriceChanges,
-        start: {ProcessMessage, :start_link_price_changes, []}
+        start: {Application.ProcessMessage, :start_link_price_changes, []}
       },
       %{
         id: PriceGroups,
-        start: {ProcessMessage, :start_link_price_groups, []}
+        start: {Application.ProcessMessage, :start_link_price_groups, []}
       },
       %{
         id: SimpleCache,
         start: {Storage.SimpleCache, :start_link, []}
+      },
+      %{
+        id: EchoClient,
+        start: {Application.EchoClient, :start_link, []}
+      },
+      %{
+        id: Scheduler,
+        start: {Helpers.Scheduler, :start_link, []}
       }
     ]
 
-    opts = [strategy: :one_for_one, name: ElixirKucoinPump.Supervisor]
+    opts = [strategy: :one_for_one, name: KucoinPump.Supervisor]
     Supervisor.start_link(children, opts)
   end
 end

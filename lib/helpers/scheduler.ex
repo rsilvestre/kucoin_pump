@@ -1,5 +1,4 @@
 defmodule Helpers.Scheduler do
-
   use TypeCheck
   use GenServer
 
@@ -19,7 +18,7 @@ defmodule Helpers.Scheduler do
   @impl true
   @spec! handle_info(any(), state :: map) :: {:noreply, state :: map}
   def handle_info(:work, state) do
-    ProcessMessage.compute_price_changes()
+    Application.ProcessMessage.compute_price_changes()
 
     # Reschedule once more
     schedule_work()
@@ -31,7 +30,7 @@ defmodule Helpers.Scheduler do
   defp schedule_work do
     # We schedule the work to happen in 2 hours (written in milliseconds).
     # Alternatively, one might write :timer.hours(2)
-    #Process.send_after(self(), :work, 2 * 60 * 60 * 1000)
+    # Process.send_after(self(), :work, 2 * 60 * 60 * 1000)
     Process.send_after(self(), :work, 1000)
 
     :ok
