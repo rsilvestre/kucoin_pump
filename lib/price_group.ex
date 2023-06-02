@@ -34,9 +34,9 @@ defmodule PriceGroup do
 
       if isColored do
         if relative_price_change < 0 do
-          "\e[1;32m" <> ret_val <> "\e[0m"
-        else
           "\e[1;31m" <> ret_val <> "\e[0m"
+        else
+          "\e[1;32m" <> ret_val <> "\e[0m"
         end
       else
         ret_val

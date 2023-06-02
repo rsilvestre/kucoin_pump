@@ -17,6 +17,10 @@ defmodule ElixirKucoinPump.Application do
         id: PriceGroups,
         start: {ProcessMessage, :start_link_price_groups, []}
       },
+      %{
+        id: SimpleCache,
+        start: {Storage.SimpleCache, :start_link, []}
+      }
     ]
 
     opts = [strategy: :one_for_one, name: ElixirKucoinPump.Supervisor]

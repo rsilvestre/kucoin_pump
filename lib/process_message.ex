@@ -1,4 +1,5 @@
 defmodule ProcessMessage do
+
   use TypeCheck
 
   @show_only_pair "USDT"  # Select nothing for all, only selected currency will be shown
@@ -13,6 +14,8 @@ defmodule ProcessMessage do
   def start_link_price_groups() do
     GenServer.start_link(Storage.MapStorage, %{}, name: PriceGroups)
   end
+
+
 
   @spec! process_message(Message.t()) :: :ok
   def process_message(%Message{
@@ -32,7 +35,7 @@ defmodule ProcessMessage do
   defp handle_message(symbol, event_time, total_trades, price) do
     #IO.puts("Symbol: #{symbol}\t Time: #{time}\t Size: #{size}\t Price: #{price}")
     if GenServer.call(PriceChanges, {:has_key, symbol}) do
-      %PriceChange{price: prev_price} = GenServer.call(PriceChanges, {:get_item, symbol})
+      %PriceChange{prev_price: prev_price} = GenServer.call(PriceChanges, {:get_item, symbol})
       price_change = %PriceChange{
         symbol: symbol,
         prev_price: prev_price,
@@ -54,6 +57,10 @@ defmodule ProcessMessage do
       GenServer.cast(PriceChanges, {:set_item, symbol, price_change})
     end
 
+    :ok
+  end
+
+  def compute_price_changes() do
     for {symbol, price_change} <- GenServer.call(PriceChanges, :all) do
       price_change_perc = PriceChange.get_price_change_perc(price_change)
 
@@ -89,6 +96,9 @@ defmodule ProcessMessage do
           GenServer.cast(PriceGroups, {:set_item, symbol, price_group})
         end
       end
+
+      price_change = %PriceChange{price_change | prev_price: price_change.price}
+      GenServer.cast(PriceChanges, {:set_item, symbol, price_change})
     end
 
     if GenServer.call(PriceGroups, :length) > 0 do
