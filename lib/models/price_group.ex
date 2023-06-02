@@ -28,6 +28,17 @@ defmodule Models.PriceGroup do
            isPrinted: boolean()
          }
 
+  def to_string(%__MODULE__{
+        symbol: symbol,
+        last_event_time: last_event_time,
+        tick_count: tick_count,
+        relative_price_change: relative_price_change,
+        total_price_change: total_price_change,
+        last_price: last_price
+      }) do
+    "Symbol:#{symbol}\t Time:#{last_event_time}\t Ticks:#{tick_count}\t RPCh:#{:io_lib.format("~.2f", [relative_price_change])}\t TPCh:#{:io_lib.format("~.2f", [total_price_change])}\t LP:#{last_price}"
+  end
+
   defimpl Inspect do
     def inspect(
           %Models.PriceGroup{
@@ -41,7 +52,7 @@ defmodule Models.PriceGroup do
           isColored
         ) do
       ret_val =
-        "Symbol:#{symbol}\t Time:#{last_event_time}\t Ticks:#{tick_count}\t RPCh:#{:io_lib.format("~.2f", [relative_price_change])}\t TPCh:#{:io_lib.format("~.2f", [total_price_change])}\t LP:#{last_price}\t"
+        "Symbol:#{symbol}\t Time:#{last_event_time}\t Ticks:#{tick_count}\t RPCh:#{:io_lib.format("~.2f", [relative_price_change])}\t TPCh:#{:io_lib.format("~.2f", [total_price_change])}\t LP:#{last_price}"
 
       if isColored do
         if relative_price_change < 0 do

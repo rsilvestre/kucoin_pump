@@ -1,6 +1,6 @@
 # IDE
-.history
-.vscode
+/.history/
+/.vscode/
 
 # The directory Mix will write compiled artifacts to.
 /_build/
@@ -28,3 +28,7 @@ kucoin_pump-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+# Secrets
+/config/.secrets.exs
+

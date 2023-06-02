@@ -9,7 +9,8 @@ defmodule Application.ProcessMessage do
   @show_limit Application.compile_env(:kucoin_pump, :show_limit)
   # min percentage change
   @min_perc Application.compile_env(:kucoin_pump, :min_perc)
-  # @chat_ids ['-510655586']
+  @chat_id Application.compile_env(:kucoin_pump, :telegram_chat_id)
+  @telegram_bot_token Application.compile_env(:kucoin_pump, :telegram_bot_token)
 
   def start_link_price_changes() do
     GenServer.start_link(Storage.MapStorage, %{}, name: PriceChanges)
@@ -124,7 +125,7 @@ defmodule Application.ProcessMessage do
           sorted_price_groups =
             Enum.sort_by(list_price_groups, & &1.total_price_change) |> Enum.reverse()
 
-          print_result(sorted_price_groups, "Top Total Price Change")
+          print_result(sorted_price_groups, "Top Total Price Change:")
         else
           any_printed
         end
@@ -134,7 +135,7 @@ defmodule Application.ProcessMessage do
           sorted_price_groups =
             Enum.sort_by(list_price_groups, & &1.relative_price_change) |> Enum.reverse()
 
-          print_result(sorted_price_groups, "Top Relative Price Change")
+          print_result(sorted_price_groups, "Top Relative Price Change:")
         else
           any_printed
         end
@@ -179,6 +180,7 @@ defmodule Application.ProcessMessage do
               end
 
             IO.inspect(max_price_group)
+            send_message("#{msg} #{PriceGroup.to_string(max_price_group)}")
             max_price_group = %PriceGroup{max_price_group | isPrinted: true}
             GenServer.cast(PriceGroups, {:set_item, max_price_group.symbol, max_price_group})
             any_printed = true
@@ -199,5 +201,14 @@ defmodule Application.ProcessMessage do
   @spec! print_result_recursive(list(), list(), String.t(), boolean(), boolean()) :: boolean()
   def print_result_recursive([], _sorted_price_groups, _msg, any_printed, _header_printed) do
     any_printed
+  end
+
+  @spec! send_message(String.t()) :: {:ok, map()}
+  def send_message(message) do
+    Telegram.Api.request(@telegram_bot_token, "sendMessage",
+      chat_id: @chat_id,
+      text: message,
+      disable_notification: true
+    )
   end
 end

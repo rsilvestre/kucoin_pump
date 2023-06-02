@@ -7,4 +7,8 @@ config :kucoin_pump,
   # minimum top query limit
   show_limit: 1,
   # min percentage change
-  min_perc: 0.05
+  min_perc: 0.20
+
+for config <- "./.secrets.exs" |> Path.expand(__DIR__) |> Path.wildcard() do
+  import_config config
+end
