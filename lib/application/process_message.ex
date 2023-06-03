@@ -66,6 +66,7 @@ defmodule Application.ProcessMessage do
     :ok
   end
 
+  @spec! compute_price_changes() :: :ok
   def compute_price_changes() do
     for {symbol, price_change} <- GenServer.call(PriceChanges, :all) do
       price_change_perc = PriceChange.get_price_change_perc(price_change)
@@ -198,7 +199,6 @@ defmodule Application.ProcessMessage do
     print_result_recursive(tail, sorted_price_groups, msg, any_printed, header_printed)
   end
 
-  @spec! print_result_recursive(list(), list(), String.t(), boolean(), boolean()) :: boolean()
   def print_result_recursive([], _sorted_price_groups, _msg, any_printed, _header_printed) do
     any_printed
   end

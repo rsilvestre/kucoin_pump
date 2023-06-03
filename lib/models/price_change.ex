@@ -13,7 +13,7 @@ defmodule Models.PriceChange do
            event_time: DateTime.t()
          }
 
-  @spec! get_price_change_perc(%__MODULE__{}) :: float()
+  @spec! get_price_change(%__MODULE__{}) :: float()
   defp get_price_change(%__MODULE__{} = price_change) do
     if price_change.price == 0 do
       raise "Price is 0"
