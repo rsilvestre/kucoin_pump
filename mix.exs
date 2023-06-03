@@ -23,7 +23,7 @@ defmodule KucoinPump.MixProject do
   defp deps do
     [
       {:httpoison, "~> 2.0"},
-      {:poison, "~> 5.0"},
+      {:jason, "~> 1.4.0"},
       {:websockex, "~> 0.4.3"},
       {:type_check, "~> 0.13.3"},
       {:telegram, github: "visciang/telegram", tag: "0.22.4"}

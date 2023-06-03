@@ -23,7 +23,7 @@ defmodule Application.KucoinPump do
       HTTPoison.get("#{@futures_api_base_url}/api/v1/contracts/active")
 
     body
-    |> Poison.decode!()
+    |> Jason.decode!()
     |> Map.get("data")
     |> Enum.map(fn x -> x["symbol"] end)
     |> Enum.map(&String.slice(&1, 0..-2))

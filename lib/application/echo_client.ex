@@ -38,7 +38,7 @@ defmodule Application.EchoClient do
   def handle_connect(_conn, state) do
     Logger.info("Connected to Echo server")
 
-    # params = {:text, %{type: "subscribe", topic: "/market/ticker:all", response: true} |> Poison.encode! |> String.to_charlist}
+    # params = {:text, %{type: "subscribe", topic: "/market/ticker:all", response: true} |> Jason.encode! |> String.to_charlist}
     # Logger.info("Sending #{inspect params}")
     # WebSockex.Conn.socket_send(conn, params)
     {:ok, state}
@@ -51,7 +51,7 @@ defmodule Application.EchoClient do
         topic: "/market/ticker:#{product}",
         response: true
       }
-      |> Poison.encode!()
+      |> Jason.encode!()
 
     {:text, subscription_msg}
   end
@@ -102,7 +102,7 @@ defmodule Application.EchoClient do
   end
 
   def handle_frame({:text, msg}, state) do
-    handle_msg(Poison.decode!(msg), state)
+    handle_msg(Jason.decode!(msg), state)
   end
 
   def handle_msg(%{"type" => "message"} = body, state) do
@@ -161,7 +161,7 @@ defmodule Application.EchoClient do
     } = HTTPoison.post("#{@api_base_url}/api/v1/bullet-public", [], options)
 
     # |> Map.get("token")
-    data = body |> Poison.decode!() |> Map.get("data")
+    data = body |> Jason.decode!() |> Map.get("data")
 
     {
       :ok,
