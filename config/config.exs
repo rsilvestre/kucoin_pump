@@ -9,6 +9,11 @@ config :kucoin_pump,
   # min percentage change
   min_perc: 0.20
 
-for config <- "./.secrets.exs" |> Path.expand(__DIR__) |> Path.wildcard() do
+config :kucoin_pump,
+  ecto_repos: [KucoinPump.Repo]
+
+for config <- "./secrets.exs" |> Path.expand(__DIR__) |> Path.wildcard() do
   import_config config
 end
+
+config :elixir, :time_zone_database, Tz.TimeZoneDatabase

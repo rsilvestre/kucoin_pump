@@ -1,7 +1,11 @@
 defmodule Application.ProcessMessage do
   alias Models.{PriceChange, PriceGroup, Message}
 
+  alias KucoinPump.Repo
+
   use TypeCheck
+
+  import Ecto.Query, only: [from: 2]
 
   # Select nothing for all, only selected currency will be shown
   @show_only_pair Application.compile_env(:kucoin_pump, :show_only_pair)
@@ -74,37 +78,77 @@ defmodule Application.ProcessMessage do
       if not price_change.isPrinted and abs(price_change_perc) >= @min_perc do
         price_change = %PriceChange{price_change | isPrinted: true}
 
-        if GenServer.call(PriceGroups, {:has_key, symbol}) do
-          %PriceGroup{
-            tick_count: tick_count,
-            total_price_change: total_price_change,
-            relative_price_change: relative_price_change
-          } = GenServer.call(PriceGroups, {:get_item, symbol})
+        price_group =
+          if GenServer.call(PriceGroups, {:has_key, symbol}) do
+            %PriceGroup{
+              tick_count: tick_count,
+              total_price_change: total_price_change,
+              relative_price_change: relative_price_change
+            } = GenServer.call(PriceGroups, {:get_item, symbol})
 
-          price_group = %PriceGroup{
-            symbol: symbol,
-            tick_count: tick_count + 1,
-            total_price_change: total_price_change + abs(price_change_perc),
-            relative_price_change: relative_price_change + price_change_perc,
-            last_price: price_change.price,
-            last_event_time: price_change.event_time,
-            isPrinted: false
-          }
+            price_group = %PriceGroup{
+              symbol: symbol,
+              tick_count: tick_count + 1,
+              total_price_change: total_price_change + abs(price_change_perc),
+              relative_price_change: relative_price_change + price_change_perc,
+              last_price: price_change.price,
+              last_event_time: price_change.event_time,
+              isPrinted: false
+            }
 
-          GenServer.cast(PriceGroups, {:set_item, symbol, price_group})
-        else
-          price_group = %PriceGroup{
-            symbol: symbol,
-            tick_count: 1,
-            total_price_change: abs(price_change_perc),
-            relative_price_change: price_change_perc,
-            last_price: price_change.price,
-            last_event_time: price_change.event_time,
-            isPrinted: false
-          }
+            price_group
+          else
+            data_price_change =
+              case Repo.one(
+                     from(p in KucoinPump.PriceGroup,
+                       select: %{
+                         tick_count: p.tick_count,
+                         relative_price_change: p.relative_price_change,
+                         total_price_change: p.total_price_change
+                       },
+                       where: p.symbol == ^symbol,
+                       order_by: [desc: p.last_event_time],
+                       limit: 1
+                     )
+                   ) do
+                nil ->
+                  %{
+                    tick_count: 1,
+                    relative_price_change: price_change_perc,
+                    total_price_change: abs(price_change_perc)
+                  }
 
-          GenServer.cast(PriceGroups, {:set_item, symbol, price_group})
+                %{
+                  tick_count: tick_count,
+                  relative_price_change: relative_price_change,
+                  total_price_change: total_price_change
+                } ->
+                  %{
+                    tick_count: tick_count + 1,
+                    relative_price_change: relative_price_change + price_change_perc,
+                    total_price_change: total_price_change + abs(price_change_perc)
+                  }
+              end
+
+            %PriceGroup{
+              symbol: symbol,
+              tick_count: data_price_change.tick_count,
+              total_price_change: data_price_change.total_price_change,
+              relative_price_change: data_price_change.relative_price_change,
+              last_price: price_change.price,
+              last_event_time: price_change.event_time,
+              isPrinted: false
+            }
+          end
+
+        case %KucoinPump.PriceGroup{}
+             |> KucoinPump.PriceGroup.changeset(Map.from_struct(price_group))
+             |> KucoinPump.Repo.insert() do
+          {:ok, _} -> "Inserted"
+          {:error, changeset} -> IO.inspect(changeset.errors)
         end
+
+        GenServer.cast(PriceGroups, {:set_item, symbol, price_group})
       end
 
       price_change = %PriceChange{price_change | prev_price: price_change.price}
@@ -116,8 +160,7 @@ defmodule Application.ProcessMessage do
       price_groups = GenServer.call(PriceGroups, :all)
       list_price_groups = Enum.map(price_groups, fn {_key, value} -> value end)
 
-      sorted_price_groups =
-        Enum.sort_by(list_price_groups, & &1.total_price_change) |> Enum.reverse()
+      sorted_price_groups = Enum.sort_by(list_price_groups, & &1.tick_count) |> Enum.reverse()
 
       any_printed = print_result(sorted_price_groups, "Top ticks:")
 
@@ -141,9 +184,9 @@ defmodule Application.ProcessMessage do
           any_printed
         end
 
-      # if any_printed do
-      #  IO.puts("\n")
-      # end
+      if any_printed do
+        IO.puts("\n")
+      end
     end
 
     :ok
@@ -181,7 +224,12 @@ defmodule Application.ProcessMessage do
               end
 
             IO.inspect(max_price_group)
-            send_message("#{msg} #{PriceGroup.to_string(max_price_group)}")
+
+            send_message(
+              "#{msg} #{PriceGroup.to_string(max_price_group)}",
+              max_price_group.symbol
+            )
+
             max_price_group = %PriceGroup{max_price_group | isPrinted: true}
             GenServer.cast(PriceGroups, {:set_item, max_price_group.symbol, max_price_group})
             any_printed = true
@@ -203,12 +251,24 @@ defmodule Application.ProcessMessage do
     any_printed
   end
 
-  @spec! send_message(String.t()) :: {:ok, map()}
-  def send_message(message) do
+  @spec! send_message(String.t(), String.t()) :: {:ok, map()}
+  def send_message(message, symbol) do
     Telegram.Api.request(@telegram_bot_token, "sendMessage",
       chat_id: @chat_id,
       text: message,
-      disable_notification: true
+      disable_notification: true,
+      parse_mode: "markdown",
+      reply_markup: %{
+        inline_keyboard: [
+          [
+            %{
+              text: "📈",
+              url:
+                "https://www.tradingview.com/chart/?symbol=KUCOIN:#{String.replace(symbol, "-", "")}&interval=1440"
+            }
+          ]
+        ]
+      }
     )
   end
 end

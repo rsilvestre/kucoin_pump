@@ -8,6 +8,7 @@ defmodule KucoinPump.Application do
     children = [
       # {Storage.EtsService, []},
       # {Storage.MapStorage, []},
+      KucoinPump.Repo,
       %{
         id: PriceChanges,
         start: {Application.ProcessMessage, :start_link_price_changes, []}
