@@ -10,11 +10,13 @@ defmodule Application.EchoClient do
 
   # @echo_server "wss://echo.websocket.org/?encoding=text"
   def start_link(product \\ "all", opts \\ []) do
-    socket_opts = [
-      ssl_options: [
-        ciphers: :ssl.cipher_suites(:all, :"tlsv1.3")
-      ]
-    ]
+    # socket_opts = [
+    #  ssl_options: [
+    #    ciphers: :ssl.cipher_suites(:all, :"tlsv1.3")
+    #  ]
+    # ]
+
+    socket_opts = []
 
     opts = Keyword.merge(opts, socket_opts)
     # WebSockex.start_link(@echo_server, __MODULE__, %{}, opts)
@@ -152,7 +154,7 @@ defmodule Application.EchoClient do
 
   @spec get_token() :: {:ok, {String.t(), String.t(), integer}}
   defp get_token do
-    # [ssl: [{:versions, [:'tlsv1.2']}], recv_timeout: 500]
+    # options = [ssl: [{:versions, [:"tlsv1.2"]}], recv_timeout: 500]
     options = []
 
     {

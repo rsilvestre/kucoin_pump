@@ -30,5 +30,5 @@ kucoin_pump-*.tar
 /tmp/
 
 # Secrets
-/config/.secrets.exs
+.env
 

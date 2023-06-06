@@ -13,22 +13,14 @@ defmodule Models.PriceChange do
            event_time: DateTime.t()
          }
 
-  @spec! get_price_change(%__MODULE__{}) :: float()
-  defp get_price_change(%__MODULE__{} = price_change) do
-    if price_change.price == 0 do
-      raise "Price is 0"
-    end
-
-    price_change.price - price_change.prev_price
+  @spec! get_price_change_perc(%__MODULE__{}) :: float()
+  def get_price_change_perc(%__MODULE__{price: price, prev_price: prev_price})
+      when price != 0 and prev_price != 0.0 do
+    (price - prev_price) / prev_price * 100
   end
 
-  @spec! get_price_change_perc(%__MODULE__{}) :: float()
-  def get_price_change_perc(%__MODULE__{} = price_change) when price_change.prev_price != 0 do
-    try do
-      get_price_change(price_change) / price_change.prev_price * 100
-    catch
-      _ -> 0.0
-    end
+  def get_price_change_perc(%__MODULE__{}) do
+    0.0
   end
 
   @doc """

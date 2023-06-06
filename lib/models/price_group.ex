@@ -37,6 +37,8 @@ defmodule Models.PriceGroup do
         last_price: last_price
       }) do
     "Symbol:#{symbol}\t Time:#{last_event_time}\t Ticks:#{tick_count}\t RPCh:#{:io_lib.format("~.2f", [relative_price_change])}\t TPCh:#{:io_lib.format("~.2f", [total_price_change])}\t LP:#{last_price}"
+
+    # "Symbol:[#{symbol}](https://www.tradingview.com/chart/?symbol=KUCOIN:#{String.replace(symbol, "-", "")}&interval=1440)\t Time:#{last_event_time}\t Ticks:#{tick_count}\t RPCh:#{:io_lib.format("~.2f", [relative_price_change])}\t TPCh:#{:io_lib.format("~.2f", [total_price_change])}\t LP:#{last_price}"
   end
 
   defimpl Inspect do
