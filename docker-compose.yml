@@ -1,0 +1,57 @@
+# Version of docker-compose.
+version: '3'
+
+# Containers we're going to run.
+services:
+  # Our Phoenix container.
+  kucoin_pump:
+    # The build parameters for this container.
+    build:
+      # Here we define that it should build from the current directory.
+      context: .
+      args:
+        TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+        TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+        MIX_ENV: prod
+        PGUSER: postgres
+        PGPASSWORD: postgres
+        PGDATABASE: kucoin_pump_repo
+        PGPORT: 5432
+        PGHOST: postgresql
+    #env_file: .env
+    environment:
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: kucoin_pump_repo
+      PGPORT: 5432
+      PGHOST: postgresql
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    depends_on:
+      # The DB container needs to be started before we start this container.
+      - postgresql
+  postgresql:
+    # We use the predefined Postgres image.
+    image: postgres:15
+    environment:
+      # Set user/password for Postgres.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      # Set a path where Postgres should store the data.
+      PGDATA: /var/lib/postgresql/data/pgdata
+    restart: always
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [ node.role == manager ]
+      restart_policy:
+        condition: on-failure
+# Define the volumes.
+volumes:
+  pgdata:
