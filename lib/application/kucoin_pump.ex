@@ -3,16 +3,6 @@ defmodule Application.KucoinPump do
   Documentation for `KucoinPump`.
   """
 
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> KucoinPump.hello()
-      :world
-
-  """
-
   use TypeCheck
 
   @futures_api_base_url Application.compile_env(:kucoin_pump, :futures_api_base_url)

@@ -1,5 +1,5 @@
 defmodule Application.ProcessMessage do
-  alias Models.{PriceChange, PriceGroup, Message}
+  alias Models.{PriceChange, PriceGroup, PriceDisplay, Message}
 
   alias KucoinPump.Repo
 
@@ -15,6 +15,7 @@ defmodule Application.ProcessMessage do
   @min_perc Application.compile_env(:kucoin_pump, :min_perc)
   @chat_id Application.compile_env(:kucoin_pump, :telegram_chat_id)
   @telegram_bot_token Application.compile_env(:kucoin_pump, :telegram_bot_token)
+  @data_window_in_minutes Application.compile_env(:kucoin_pump, :data_window_in_minutes)
 
   def start_link_price_changes() do
     GenServer.start_link(Storage.MapStorage, %{}, name: PriceChanges)
@@ -132,7 +133,8 @@ defmodule Application.ProcessMessage do
 
             %PriceGroup{
               symbol: symbol,
-              tick_count: data_price_change.tick_count,
+              #tick_count: data_price_change.tick_count,
+              tick_count: 1,
               total_price_change: data_price_change.total_price_change,
               relative_price_change: data_price_change.relative_price_change,
               last_price: price_change.price,
@@ -155,39 +157,44 @@ defmodule Application.ProcessMessage do
       GenServer.cast(PriceChanges, {:set_item, symbol, price_change})
     end
 
-    if GenServer.call(PriceGroups, :length) > 0 do
-      # sorted_price_groups = Enum.sort_by(GenServer.call(PriceGroups, :all), &PriceGroup.get_relative_price_change(&1))
-      price_groups = GenServer.call(PriceGroups, :all)
-      list_price_groups = Enum.map(price_groups, fn {_key, value} -> value end)
+    :ok
+  end
 
-      sorted_price_groups = Enum.sort_by(list_price_groups, & &1.tick_count) |> Enum.reverse()
+  @spec! extract_message_from_query_result(map()) :: list()
+  def extract_message_from_query_result(result) do
+    Enum.map(result.rows, fn [sym, rsi, pch, np, lp, tpch, rpch, t] ->
+      Models.PriceDisplay.from_result_to_message(%{
+        "sym" => sym,
+        "rsi" => rsi,
+        "pch" => pch,
+        "np" => np,
+        "lp" => lp,
+        "tpch" => tpch,
+        "rpch" => rpch,
+        "t" => t
+      })
+    end)
+  end
 
-      any_printed = print_result(sorted_price_groups, "Top ticks:")
+  @spec! query_compute_price_diff(integer()) :: list()
+  def query_compute_price_diff(time_interval_in_minutes) do
+    Ecto.Adapters.SQL.query!(KucoinPump.Repo, "select * from compute_price_diff(#{time_interval_in_minutes})")
+      |> extract_message_from_query_result
+  end
 
-      any_printed =
-        if not any_printed do
-          sorted_price_groups =
-            Enum.sort_by(list_price_groups, & &1.total_price_change) |> Enum.reverse()
+  @spec! display_price_changes() :: :ok
+  def display_price_changes() do
+    # sorted_price_groups = Enum.sort_by(GenServer.call(PriceGroups, :all), &PriceGroup.get_relative_price_change(&1))
+    #price_groups = GenServer.call(PriceGroups, :all)
+    #list_price_groups = Enum.map(price_groups, fn {_key, value} -> value end)
 
-          print_result(sorted_price_groups, "Top Total Price Change:")
-        else
-          any_printed
-        end
+    #sorted_price_groups = Enum.sort_by(list_price_groups, & &1.tick_count) |> Enum.reverse()
 
-      any_printed =
-        if not any_printed do
-          sorted_price_groups =
-            Enum.sort_by(list_price_groups, & &1.relative_price_change) |> Enum.reverse()
+    #any_printed = print_result(sorted_price_groups, "Top ticks:")
 
-          print_result(sorted_price_groups, "Top Relative Price Change:")
-        else
-          any_printed
-        end
+    compute_price_diff = query_compute_price_diff(@data_window_in_minutes)
 
-      if any_printed do
-        IO.puts("\n")
-      end
-    end
+    print_result(compute_price_diff, "Top:")
 
     :ok
   end
@@ -226,12 +233,12 @@ defmodule Application.ProcessMessage do
             IO.inspect(max_price_group)
 
             send_message(
-              "#{msg} #{PriceGroup.to_string(max_price_group)}",
+              "#{msg} #{PriceDisplay.to_string(max_price_group)}",
               max_price_group.symbol
             )
 
-            max_price_group = %PriceGroup{max_price_group | isPrinted: true}
-            GenServer.cast(PriceGroups, {:set_item, max_price_group.symbol, max_price_group})
+            #max_price_group = %PriceDisplay{max_price_group | isPrinted: true}
+            #GenServer.cast(PriceDisplay, {:set_item, max_price_group.symbol, max_price_group})
             any_printed = true
 
             {any_printed, header_printed}

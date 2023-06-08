@@ -26,8 +26,12 @@ defmodule KucoinPump.Application do
         start: {Application.EchoClient, :start_link, []}
       },
       %{
-        id: Scheduler,
-        start: {Helpers.Scheduler, :start_link, []}
+        id: SchedulerCompute,
+        start: {Helpers.SchedulerCompute, :start_link, []}
+      },
+      %{
+        id: SchedulerDisplay,
+        start: {Helpers.SchedulerDisplay, :start_link, []}
       }
     ]
 
