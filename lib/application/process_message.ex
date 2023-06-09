@@ -283,24 +283,27 @@ defmodule Application.ProcessMessage do
     any_printed
   end
 
-  @spec! send_message(String.t(), String.t()) :: {:ok, map()}
+  @spec! send_message(String.t(), String.t()) :: :ok
   def send_message(message, symbol) do
-    Telegram.Api.request(@telegram_bot_token, "sendMessage",
-      chat_id: @chat_id,
-      text: message,
-      disable_notification: true,
-      parse_mode: "markdown",
-      reply_markup: %{
-        inline_keyboard: [
-          [
-            %{
-              text: "📈",
-              url:
-                "https://www.tradingview.com/chart/?symbol=KUCOIN:#{String.replace(symbol, "-", "")}&interval=1440"
-            }
+    {:ok, _} =
+      Telegram.Api.request(@telegram_bot_token, "sendMessage",
+        chat_id: @chat_id,
+        text: message,
+        disable_notification: true,
+        parse_mode: "markdown",
+        reply_markup: %{
+          inline_keyboard: [
+            [
+              %{
+                text: "📈",
+                url:
+                  "https://www.tradingview.com/chart/?symbol=KUCOIN:#{String.replace(symbol, "-", "")}&interval=1440"
+              }
+            ]
           ]
-        ]
-      }
-    )
+        }
+      )
+
+    :ok
   end
 end

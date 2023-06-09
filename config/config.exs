@@ -8,8 +8,8 @@ config :kucoin_pump,
   show_limit: 10,
   # min percentage change
   min_perc: 0.05,
-  compute_refresh_rate: 1000,
-  display_refresh_rate: 60000,
+  compute_refresh_rate: 1_000,
+  display_refresh_rate: 3_600_000,
   data_window_in_minutes: 60
 
 config :kucoin_pump,
