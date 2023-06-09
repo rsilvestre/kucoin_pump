@@ -5,18 +5,85 @@ defmodule Application.ProcessMessageTest do
   test "extract message from query result" do
     result = %Postgrex.Result{
       command: :select,
-      columns: ["sym", "rsi", "pch", "np", "lp", "tpch", "rpch", "t"],
+      columns: [
+        "sym",
+        "rsi",
+        "pch",
+        "np",
+        "lp",
+        "tpch",
+        "rpch",
+        "t",
+        "reg_slope",
+        "reg_intercept",
+        "trend"
+      ],
       rows: [
-        ["BOB-USDT", 58.91472868217049, 1.0757717492984233, 22, 2.161e-5,
-         1535.6734993555503, -54.02952679094189, ~N[2023-06-07 17:01:57.000000]],
-        ["STORJ-USDT", 51.288056206088996, 0.34515218073422965, 26, 0.3198,
-         185.73015262602357, 14.333039747077144, ~N[2023-06-07 17:02:00.000000]],
-        ["ICP-USDT", 42.857142857142854, -0.23866348448686844, 7, 4.18,
-         211.7736339222215, -0.9358530826792144, ~N[2023-06-07 17:02:00.000000]],
-        ["MTL-USDT", 38.70967741935481, -1.3165814023472817, 18, 1.3117,
-         1414.2567808700487, -5.544317904243292, ~N[2023-06-07 17:01:58.000000]],
-        ["KAS-USDT", 36.36363636363622, -0.20519835841313622, 4, 0.01459,
-         397.11296777137335, 0.16654367009143417, ~N[2023-06-07 17:01:36.000000]]
+        [
+          "BOB-USDT",
+          58.91472868217049,
+          1.0757717492984233,
+          22,
+          2.161e-5,
+          1535.6734993555503,
+          -54.02952679094189,
+          ~N[2023-06-07 17:01:57.000000],
+          -0.2,
+          234.223,
+          "negative"
+        ],
+        [
+          "STORJ-USDT",
+          51.288056206088996,
+          0.34515218073422965,
+          26,
+          0.3198,
+          185.73015262602357,
+          14.333039747077144,
+          ~N[2023-06-07 17:02:00.000000],
+          -0.2,
+          234.223,
+          "negative"
+        ],
+        [
+          "ICP-USDT",
+          42.857142857142854,
+          -0.23866348448686844,
+          7,
+          4.18,
+          211.7736339222215,
+          -0.9358530826792144,
+          ~N[2023-06-07 17:02:00.000000],
+          -0.2,
+          234.223,
+          "negative"
+        ],
+        [
+          "MTL-USDT",
+          38.70967741935481,
+          -1.3165814023472817,
+          18,
+          1.3117,
+          1414.2567808700487,
+          -5.544317904243292,
+          ~N[2023-06-07 17:01:58.000000],
+          -0.2,
+          234.223,
+          "negative"
+        ],
+        [
+          "KAS-USDT",
+          36.36363636363622,
+          -0.20519835841313622,
+          4,
+          0.01459,
+          397.11296777137335,
+          0.16654367009143417,
+          ~N[2023-06-07 17:01:36.000000],
+          -0.2,
+          234.223,
+          "negative"
+        ]
       ],
       num_rows: 5,
       connection_id: 3602,
@@ -32,7 +99,10 @@ defmodule Application.ProcessMessageTest do
         nomber_of_event: 22,
         relative_price_change: 1.0757717492984233,
         rsi: 58.91472868217049,
-        symbol: "BOB-USDT"
+        symbol: "BOB-USDT",
+        reg_slope: -0.2,
+        reg_intercept: 234.223,
+        trend: "negative"
       },
       %Models.PriceDisplay{
         last_event_time: ~N[2023-06-07 17:02:00.000000],
@@ -42,7 +112,10 @@ defmodule Application.ProcessMessageTest do
         nomber_of_event: 26,
         relative_price_change: 0.34515218073422965,
         rsi: 51.288056206088996,
-        symbol: "STORJ-USDT"
+        symbol: "STORJ-USDT",
+        reg_slope: -0.2,
+        reg_intercept: 234.223,
+        trend: "negative"
       },
       %Models.PriceDisplay{
         last_event_time: ~N[2023-06-07 17:02:00.000000],
@@ -52,7 +125,10 @@ defmodule Application.ProcessMessageTest do
         nomber_of_event: 7,
         relative_price_change: -0.23866348448686844,
         rsi: 42.857142857142854,
-        symbol: "ICP-USDT"
+        symbol: "ICP-USDT",
+        reg_slope: -0.2,
+        reg_intercept: 234.223,
+        trend: "negative"
       },
       %Models.PriceDisplay{
         last_event_time: ~N[2023-06-07 17:01:58.000000],
@@ -62,7 +138,10 @@ defmodule Application.ProcessMessageTest do
         nomber_of_event: 18,
         relative_price_change: -1.3165814023472817,
         rsi: 38.70967741935481,
-        symbol: "MTL-USDT"
+        symbol: "MTL-USDT",
+        reg_slope: -0.2,
+        reg_intercept: 234.223,
+        trend: "negative"
       },
       %Models.PriceDisplay{
         last_event_time: ~N[2023-06-07 17:01:36.000000],
@@ -72,7 +151,10 @@ defmodule Application.ProcessMessageTest do
         nomber_of_event: 4,
         relative_price_change: -0.20519835841313622,
         rsi: 36.36363636363622,
-        symbol: "KAS-USDT"
+        symbol: "KAS-USDT",
+        reg_slope: -0.2,
+        reg_intercept: 234.223,
+        trend: "negative"
       }
     ]
 

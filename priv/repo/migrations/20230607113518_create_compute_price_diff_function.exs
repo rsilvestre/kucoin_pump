@@ -3,9 +3,10 @@ defmodule KucoinPump.Repo.Migrations.CreateComputePriceDiffFunction do
 
   def change do
     execute("""
-    --CREATE EXTENSION IF NOT EXISTS "unaccent";
-    --DROP FUNCTION compute_price_diff(integer);
+    DROP FUNCTION compute_price_diff(integer);
+    """)
 
+    execute("""
     CREATE OR REPLACE FUNCTION compute_price_diff(time_interval_in_minutes int)
     RETURNS TABLE(
         sym character varying,

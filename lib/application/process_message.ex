@@ -133,7 +133,7 @@ defmodule Application.ProcessMessage do
 
             %PriceGroup{
               symbol: symbol,
-              #tick_count: data_price_change.tick_count,
+              # tick_count: data_price_change.tick_count,
               tick_count: 1,
               total_price_change: data_price_change.total_price_change,
               relative_price_change: data_price_change.relative_price_change,
@@ -162,7 +162,19 @@ defmodule Application.ProcessMessage do
 
   @spec! extract_message_from_query_result(map()) :: list()
   def extract_message_from_query_result(result) do
-    Enum.map(result.rows, fn [sym, rsi, pch, np, lp, tpch, rpch, t] ->
+    Enum.map(result.rows, fn [
+                               sym,
+                               rsi,
+                               pch,
+                               np,
+                               lp,
+                               tpch,
+                               rpch,
+                               t,
+                               reg_slope,
+                               reg_intercept,
+                               trend
+                             ] ->
       Models.PriceDisplay.from_result_to_message(%{
         "sym" => sym,
         "rsi" => rsi,
@@ -171,26 +183,39 @@ defmodule Application.ProcessMessage do
         "lp" => lp,
         "tpch" => tpch,
         "rpch" => rpch,
-        "t" => t
+        "t" => t,
+        "reg_slope" => reg_slope,
+        "reg_intercept" => reg_intercept,
+        "trend" => trend
       })
     end)
   end
 
   @spec! query_compute_price_diff(integer()) :: list()
   def query_compute_price_diff(time_interval_in_minutes) do
-    Ecto.Adapters.SQL.query!(KucoinPump.Repo, "select * from compute_price_diff(#{time_interval_in_minutes})")
-      |> extract_message_from_query_result
+    Ecto.Adapters.SQL.query!(
+      KucoinPump.Repo,
+      "select * from compute_price_diff(#{time_interval_in_minutes})"
+    )
+    |> extract_message_from_query_result
+  end
+
+  @spec! display_table_price_change() :: :ok
+  def display_table_price_change() do
+    Application.ProcessMessage.query_compute_price_diff(60)
+    |> Enum.map(&Models.PriceDisplay.to_table(&1))
+    |> Helpers.TableFormatter.print_table()
   end
 
   @spec! display_price_changes() :: :ok
   def display_price_changes() do
     # sorted_price_groups = Enum.sort_by(GenServer.call(PriceGroups, :all), &PriceGroup.get_relative_price_change(&1))
-    #price_groups = GenServer.call(PriceGroups, :all)
-    #list_price_groups = Enum.map(price_groups, fn {_key, value} -> value end)
+    # price_groups = GenServer.call(PriceGroups, :all)
+    # list_price_groups = Enum.map(price_groups, fn {_key, value} -> value end)
 
-    #sorted_price_groups = Enum.sort_by(list_price_groups, & &1.tick_count) |> Enum.reverse()
+    # sorted_price_groups = Enum.sort_by(list_price_groups, & &1.tick_count) |> Enum.reverse()
 
-    #any_printed = print_result(sorted_price_groups, "Top ticks:")
+    # any_printed = print_result(sorted_price_groups, "Top ticks:")
 
     compute_price_diff = query_compute_price_diff(@data_window_in_minutes)
 
@@ -237,8 +262,8 @@ defmodule Application.ProcessMessage do
               max_price_group.symbol
             )
 
-            #max_price_group = %PriceDisplay{max_price_group | isPrinted: true}
-            #GenServer.cast(PriceDisplay, {:set_item, max_price_group.symbol, max_price_group})
+            # max_price_group = %PriceDisplay{max_price_group | isPrinted: true}
+            # GenServer.cast(PriceDisplay, {:set_item, max_price_group.symbol, max_price_group})
             any_printed = true
 
             {any_printed, header_printed}

@@ -31,4 +31,5 @@ kucoin_pump-*.tar
 
 # Secrets
 .env
+.env_dev
 

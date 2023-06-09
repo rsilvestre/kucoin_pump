@@ -25,6 +25,7 @@ defmodule KucoinPump.MixProject do
       {:ecto_sql, "~> 3.0"},
       {:httpoison, "~> 2.0"},
       {:jason, "~> 1.4.0"},
+      {:matrix, "~> 0.3.0"},
       {:postgrex, ">= 0.0.0"},
       {:telegram, github: "visciang/telegram", tag: "0.22.4"},
       # {:timex, "~> 0.19.2"},

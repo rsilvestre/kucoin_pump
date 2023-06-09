@@ -1,4 +1,4 @@
-defmodule KucoinPump.Repo.Migrations.UpdateComputePriceDiffFunction do
+defmodule KucoinPump.Repo.Migrations.UpdateComputePriceDiffFunctionAddReg do
   use Ecto.Migration
 
   def change do
@@ -16,7 +16,10 @@ defmodule KucoinPump.Repo.Migrations.UpdateComputePriceDiffFunction do
         lp double precision,
         tpch double precision,
         rpch double precision,
-        t timestamp
+        t timestamp,
+        reg_slope double precision,
+        reg_intercept double precision,
+        trend text
         )
         LANGUAGE 'plpgsql'
         COST 100
@@ -31,13 +34,15 @@ defmodule KucoinPump.Repo.Migrations.UpdateComputePriceDiffFunction do
         SELECT
         symbol,
         last_price - LAG(last_price) OVER (PARTITION BY symbol ORDER BY last_event_time) AS price_change,
+        last_price as price,
         LAST_VALUE(last_price) OVER (PARTITION BY symbol ORDER BY last_event_time) AS last_price,
         LAST_VALUE(total_price_change) OVER (PARTITION BY symbol ORDER BY last_event_time) AS total_price_change,
         LAST_VALUE(relative_price_change) OVER (PARTITION BY symbol ORDER BY last_event_time) AS relative_price_change,
-        LAST_VALUE(last_event_time) OVER (PARTITION BY symbol ORDER BY last_event_time) AS last_event_time
+        LAST_VALUE(last_event_time) OVER (PARTITION BY symbol ORDER BY last_event_time) AS last_event_time,
+            ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY last_event_time DESC) AS rn
         FROM
         price_groups
-        WHERE last_event_time > (now() AT time zone 'utc' - interval '1 minutes' * time_interval_in_minutes)
+        WHERE last_event_time > (now() AT time zone 'utc' - interval '1 minutes' * 60)
       ),
       price_sums AS (
         SELECT
@@ -49,7 +54,9 @@ defmodule KucoinPump.Repo.Migrations.UpdateComputePriceDiffFunction do
         MAX(total_price_change) AS total_price_change,
         MAX(relative_price_change) AS relative_price_change,
         MAX(last_event_time) AS last_event_time,
-        SUM(1) AS nb
+        SUM(1) AS nb,
+            REGR_SLOPE(last_price, rn) AS slope,
+            REGR_INTERCEPT(last_price, rn) AS intercept
         FROM
         price_diff
         GROUP BY
@@ -62,29 +69,35 @@ defmodule KucoinPump.Repo.Migrations.UpdateComputePriceDiffFunction do
             100 - (100 / (1 + (positive_sum / negative_sum)))
           ELSE 0
           END AS rsix,
-          price_change / (last_price - price_change) * 100 AS pch,
+          price_change / (last_price - price_change) * 100 AS pchx,
           nb,
         last_price,
         total_price_change,
         relative_price_change,
-        last_event_time
+        last_event_time,
+        slope,
+        intercept
         FROM
           price_sums
       )
       SELECT
         rsiy.symbol,
         rsiy.rsix,
-        rsiy.pch,
+        rsiy.pchx,
         rsiy.nb,
         rsiy.last_price,
         rsiy.total_price_change,
         rsiy.relative_price_change,
-        rsiy.last_event_time
+        rsiy.last_event_time,
+        rsiy.slope,
+        rsiy.intercept,
+        CASE WHEN rsiy.slope > 0 THEN 'positive' WHEN rsiy.slope < 0 THEN 'negative' ELSE 'steady' END
       FROM rsiy
       WHERE rsiy.rsix != 0 --AND nb > 10
-      ORDER BY rsiy.rsix DESC;
+      ORDER BY abs(rsiy.pchx) DESC;
     END;
     $$;
     """)
+
   end
 end
