@@ -101,7 +101,7 @@ defmodule Models.PriceDisplay do
         reg_intercept: reg_intercept,
         trend: trend
       }) do
-    "Symbol:#{symbol}\t Time:#{last_event_time}\t RSI:#{:io_lib.format("~.2f", [rsi])}\t RPCh:#{:io_lib.format("~.2f", [relative_price_change])}\t NOE:#{nomber_of_event}\t LP:#{:io_lib.format("~.2f", [last_price])}\t LTPCh:#{:io_lib.format("~.2f", [last_total_price_change])}\t LRPCh:#{:io_lib.format("~.2f", [last_relative_price_change])}\t Slope:#{:io_lib.format("~.2f", [reg_slope])}\t Intercept:#{:io_lib.format("~.2f", [reg_intercept])}\t Trend:#{trend}"
+    "Symbol:#{symbol}\t Time:#{last_event_time}\t RSI:#{:io_lib.format("~.2f", [rsi])}\t RPCh:#{:io_lib.format("~.2f", [relative_price_change])}\t NOE:#{nomber_of_event}\t LP:#{:io_lib.format("~.2f", [last_price])}\t LTPCh:#{:io_lib.format("~.2f", [last_total_price_change])}\t LRPCh:#{:io_lib.format("~.2f", [last_relative_price_change])}\t Slope:#{:io_lib.format("~.5f", [reg_slope])}\t Intercept:#{:io_lib.format("~.2f", [reg_intercept])}\t Trend:#{trend}"
   end
 
   def to_table(%__MODULE__{} = price_display) do
