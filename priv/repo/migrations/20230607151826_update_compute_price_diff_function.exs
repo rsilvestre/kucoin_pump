@@ -3,7 +3,7 @@ defmodule KucoinPump.Repo.Migrations.UpdateComputePriceDiffFunction do
 
   def change do
     execute("""
-    DROP FUNCTION compute_price_diff(integer);
+    DROP FUNCTION IF EXISTS compute_price_diff(integer);
     """)
 
     execute("""

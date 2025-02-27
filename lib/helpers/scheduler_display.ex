@@ -9,7 +9,6 @@ defmodule Helpers.SchedulerDisplay do
   end
 
   @impl true
-  @spec! init(state :: map) :: {:ok, state :: map}
   def init(state) do
     # Schedule work to be performed on start
     schedule_work()
@@ -18,7 +17,6 @@ defmodule Helpers.SchedulerDisplay do
   end
 
   @impl true
-  @spec! handle_info(any(), state :: map) :: {:noreply, state :: map}
   def handle_info(:work, state) do
     Application.ProcessMessage.display_price_changes()
 

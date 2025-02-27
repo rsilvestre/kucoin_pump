@@ -34,7 +34,7 @@ defmodule Helpers.TableFormatter do
     end)
   end
 
-  @spec! select_keys(map(), list()) :: map()
+  @spec! select_keys(list(map()), list()) :: list(map())
   def select_keys(dict, keys) do
     for entry <- dict do
       {dict1, _} = Map.split(entry, keys)

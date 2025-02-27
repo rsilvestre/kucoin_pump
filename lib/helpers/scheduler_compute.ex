@@ -18,7 +18,6 @@ defmodule Helpers.SchedulerCompute do
   end
 
   @impl true
-  @spec! handle_info(any(), state :: map) :: {:noreply, state :: map}
   def handle_info(:work, state) do
     Application.ProcessMessage.compute_price_changes()
 

@@ -14,13 +14,14 @@ defmodule Models.PriceChange do
          }
 
   @spec! get_price_change_perc(%__MODULE__{}) :: float()
-  def get_price_change_perc(%__MODULE__{price: price, prev_price: prev_price})
-      when price != 0 and prev_price != 0.0 do
-    (price - prev_price) / prev_price * 100
-  end
+  def get_price_change_perc(%__MODULE__{price: price, prev_price: prev_price}) do
+    case {price, prev_price} do
+      {price, prev_price} when price != 0 and prev_price != 0.0 ->
+        (price - prev_price) / prev_price * 100
 
-  def get_price_change_perc(%__MODULE__{}) do
-    0.0
+      _ ->
+        0.0
+    end
   end
 
   @doc """

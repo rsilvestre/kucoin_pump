@@ -16,7 +16,7 @@ defmodule Application.KucoinPump do
     |> Jason.decode!()
     |> Map.get("data")
     |> Enum.map(fn x -> x["symbol"] end)
-    |> Enum.map(&String.slice(&1, 0..-2))
+    |> Enum.map(&String.slice(&1, 0..-2//1))
     |> MapSet.new()
   end
 end

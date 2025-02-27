@@ -33,6 +33,7 @@ defmodule Application.EchoClient do
 
     :timer.send_interval(15_000, pid, :send_ping)
     subscribe(pid, product)
+
     {:ok, pid}
   end
 

@@ -9,7 +9,7 @@ config :kucoin_pump,
   # min percentage change
   min_perc: 0.05,
   compute_refresh_rate: 1_000,
-  display_refresh_rate: 3_600_000,
+  display_refresh_rate: 1_000,
   data_window_in_minutes: 60
 
 config :kucoin_pump,

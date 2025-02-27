@@ -205,6 +205,8 @@ defmodule Application.ProcessMessage do
     Application.ProcessMessage.query_compute_price_diff(60)
     |> Enum.map(&Models.PriceDisplay.to_table(&1))
     |> Helpers.TableFormatter.print_table()
+
+    :ok
   end
 
   @spec! display_price_changes() :: :ok
@@ -285,24 +287,26 @@ defmodule Application.ProcessMessage do
 
   @spec! send_message(String.t(), String.t()) :: :ok
   def send_message(message, symbol) do
-    {:ok, _} =
-      Telegram.Api.request(@telegram_bot_token, "sendMessage",
-        chat_id: @chat_id,
-        text: message,
-        disable_notification: true,
-        parse_mode: "markdown",
-        reply_markup: %{
-          inline_keyboard: [
-            [
-              %{
-                text: "📈",
-                url:
-                  "https://www.tradingview.com/chart/?symbol=KUCOIN:#{String.replace(symbol, "-", "")}&interval=1440"
-              }
-            ]
-          ]
-        }
-      )
+    case Telegram.Api.request(@telegram_bot_token, "sendMessage",
+           chat_id: @chat_id,
+           text: message,
+           disable_notification: true,
+           parse_mode: "markdown",
+           reply_markup: %{
+             inline_keyboard: [
+               [
+                 %{
+                   text: "📈",
+                   url:
+                     "https://www.tradingview.com/chart/?symbol=KUCOIN:#{String.replace(symbol, "-", "")}&interval=1440"
+                 }
+               ]
+             ]
+           }
+         ) do
+      {:ok, _} -> :ok
+      {:error, reason} -> IO.inspect(reason)
+    end
 
     :ok
   end

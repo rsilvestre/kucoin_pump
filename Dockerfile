@@ -1,7 +1,7 @@
 # ./Dockerfile
 
 # Extend from the official Elixir image.
-FROM elixir:1.14 as build
+FROM elixir:1.18 as build
 
 ARG TELEGRAM_BOT_TOKEN
 ARG TELEGRAM_CHAT_ID
@@ -43,7 +43,7 @@ COPY lib lib
 
 RUN mix do compile, release
 
-FROM elixir:1.14 as app
+FROM elixir:1.18 as app
 
 RUN apt-get update && \
     apt-get install -y postgresql-client
