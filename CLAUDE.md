@@ -8,6 +8,8 @@
 - `mix test path/to/test_file.exs:line_number` - Run specific test case
 - `mix format` - Format code
 - `mix dialyzer` - Run type checking (may take time on first run)
+- `mix credo` - Run code quality analysis
+- `mix credo --strict` - Run strict code quality checks
 - `iex -S mix` - Start application with interactive REPL
 
 ## Code Style Guidelines

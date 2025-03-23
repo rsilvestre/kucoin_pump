@@ -1,5 +1,5 @@
 defmodule MessageTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   doctest Models.Message
 
   test "From JSON to %Message{}" do

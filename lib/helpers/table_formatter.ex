@@ -1,4 +1,8 @@
 defmodule Helpers.TableFormatter do
+  @moduledoc """
+  Utility for formatting and printing tabular data in the terminal.
+  Provides functions for calculating column widths and aligning data.
+  """
   use TypeCheck
 
   import Enum, only: [max: 1, zip: 2, join: 2]
@@ -6,7 +10,8 @@ defmodule Helpers.TableFormatter do
   @header ~w(Symbol Time RSI RPCh NOE LP LTPCh LRPCh Slope Intercept Trend)
   @header_column_separator "-+-"
 
-  # TODO: Refactor; try to find more uses for stdlib functions
+  # TODO: Use more stdlib functions and refactor how tables are rendered
+  # This is a low-priority improvement task tracked for future versions.
   @spec! print_table(list(), list()) :: :ok
   def print_table(table, header \\ @header) do
     # the headers needs now to be a string
@@ -18,7 +23,7 @@ defmodule Helpers.TableFormatter do
     hr |> print_row(columns_widths, @header_column_separator)
     header |> print_row(columns_widths)
     hr |> print_row(columns_widths, @header_column_separator)
-    table |> Enum.map(&print_row(&1, columns_widths))
+    Enum.each(table, &print_row(&1, columns_widths))
     hr |> print_row(columns_widths, @header_column_separator)
   end
 

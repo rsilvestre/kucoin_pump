@@ -1,4 +1,8 @@
 defmodule Models.PriceGroup do
+  @moduledoc """
+  Defines a struct for grouping price changes for a trading symbol.
+  Tracks tick counts, price changes, and provides string formatting functionality.
+  """
   use TypeCheck
 
   @enforce_keys [
@@ -8,7 +12,7 @@ defmodule Models.PriceGroup do
     :relative_price_change,
     :last_price,
     :last_event_time,
-    :isPrinted
+    :is_printed
   ]
   defstruct symbol: nil,
             tick_count: nil,
@@ -16,7 +20,7 @@ defmodule Models.PriceGroup do
             relative_price_change: nil,
             last_price: nil,
             last_event_time: nil,
-            isPrinted: nil
+            is_printed: nil
 
   @type! t() :: %__MODULE__{
            symbol: String.t(),
@@ -25,7 +29,7 @@ defmodule Models.PriceGroup do
            relative_price_change: float(),
            last_price: float(),
            last_event_time: DateTime.t(),
-           isPrinted: boolean()
+           is_printed: boolean()
          }
 
   def to_string(%__MODULE__{

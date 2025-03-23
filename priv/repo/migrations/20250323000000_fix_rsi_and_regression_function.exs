@@ -1,4 +1,4 @@
-defmodule KucoinPump.Repo.Migrations.FixComputePriceDiffFunctionAddReg do
+defmodule KucoinPump.Repo.Migrations.FixRsiAndRegressionFunction do
   use Ecto.Migration
 
   def change do

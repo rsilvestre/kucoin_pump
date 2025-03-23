@@ -1,4 +1,8 @@
 defmodule Models.Message do
+  @moduledoc """
+  Defines the Message struct representing a market data message from KuCoin.
+  Provides functions to convert JSON messages to structured Message objects.
+  """
   use TypeCheck
 
   @enforce_keys [:subject, :time, :size, :price]

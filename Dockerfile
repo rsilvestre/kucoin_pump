@@ -3,6 +3,7 @@
 # Extend from the official Elixir image.
 FROM elixir:1.18 as build
 
+ARG TELEGRAM_ENABLED
 ARG TELEGRAM_BOT_TOKEN
 ARG TELEGRAM_CHAT_ID
 ARG MIX_ENV
@@ -15,6 +16,7 @@ ARG PGHOST
 RUN apt-get update
 
 ENV MIX_ENV=$MIX_ENV
+ENV TELEGRAM_ENABLED=$TELEGRAM_ENABLED
 ENV TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
 ENV TELEGRAM_CHAT_ID=$TELEGRAM_CHAT_ID
 ENV PGUSER=$PGUSER
@@ -33,11 +35,11 @@ RUN mix do local.hex --force, local.rebar --force
 
 # install mix dependencies
 COPY mix.exs mix.lock ./
-COPY config config
 
 RUN mix do deps.get --only $MIX_ENV, deps.compile
 
 # build project
+COPY config config
 COPY priv priv
 COPY lib lib
 

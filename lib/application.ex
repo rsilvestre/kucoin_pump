@@ -5,10 +5,26 @@ defmodule KucoinPump.Application do
 
   @impl true
   def start(_type, _args) do
-    children = [
-      # {Storage.EtsService, []},
-      # {Storage.MapStorage, []},
-      KucoinPump.Repo,
+    # Skip database repo in test environment
+    children = get_children()
+
+    opts = [strategy: :one_for_one, name: KucoinPump.Supervisor]
+    Supervisor.start_link(children, opts)
+  end
+
+  # Different child specs based on environment
+  defp get_children do
+    if Application.get_env(:kucoin_pump, :skip_db_connection, false) do
+      # Skip database repo in test environment
+      get_children_without_repo()
+    else
+      # Include database repo in non-test environments
+      [KucoinPump.Repo | get_children_without_repo()]
+    end
+  end
+
+  defp get_children_without_repo do
+    [
       %{
         id: PriceChanges,
         start: {Application.ProcessMessage, :start_link_price_changes, []}
@@ -34,8 +50,5 @@ defmodule KucoinPump.Application do
         start: {Helpers.SchedulerDisplay, :start_link, []}
       }
     ]
-
-    opts = [strategy: :one_for_one, name: KucoinPump.Supervisor]
-    Supervisor.start_link(children, opts)
   end
 end

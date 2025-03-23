@@ -10,6 +10,7 @@ services:
       # Here we define that it should build from the current directory.
       context: .
       args:
+        TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-false}
         TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
         TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
         MIX_ENV: prod
@@ -20,6 +21,7 @@ services:
         PGHOST: postgresql
     #env_file: .env
     environment:
+      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-false}
       PGUSER: postgres
       PGPASSWORD: postgres
       PGDATABASE: kucoin_pump_repo
@@ -31,6 +33,34 @@ services:
         condition: on-failure
     depends_on:
       # The DB container needs to be started before we start this container.
+      - postgresql
+      
+  # Development container for running mix tasks
+  dev:
+    build:
+      context: .
+      args:
+        TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-false}
+        TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+        TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+        MIX_ENV: dev
+        PGUSER: postgres
+        PGPASSWORD: postgres
+        PGDATABASE: kucoin_pump_repo
+        PGPORT: 5432
+        PGHOST: postgresql
+    environment:
+      MIX_ENV: dev
+      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-false}
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: kucoin_pump_repo
+      PGPORT: 5432
+      PGHOST: postgresql
+    volumes:
+      - .:/app
+    command: tail -f /dev/null
+    depends_on:
       - postgresql
   postgresql:
     # We use the predefined Postgres image.

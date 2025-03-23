@@ -1,4 +1,8 @@
 defmodule Helpers.SchedulerCompute do
+  @moduledoc """
+  GenServer that schedules periodic computation of price changes.
+  Runs at intervals defined by the application's compute_refresh_rate setting.
+  """
   use TypeCheck
   use GenServer
 

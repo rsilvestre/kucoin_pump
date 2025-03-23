@@ -1,9 +1,15 @@
 defmodule Application.ProcessMessage do
-  alias Models.{PriceChange, PriceGroup, PriceDisplay, Message}
-
+  @moduledoc """
+  Handles the processing of incoming market data messages.
+  Manages price changes, computes statistics, and formats data for display.
+  Provides functionality for detecting significant price movements and trends.
+  """
   alias KucoinPump.Repo
+  alias Ecto.Adapters.SQL
+  alias Models.{Message, PriceChange, PriceDisplay, PriceGroup}
 
   use TypeCheck
+  require Logger
 
   import Ecto.Query, only: [from: 2]
 
@@ -13,9 +19,12 @@ defmodule Application.ProcessMessage do
   @show_limit Application.compile_env(:kucoin_pump, :show_limit)
   # min percentage change
   @min_perc Application.compile_env(:kucoin_pump, :min_perc)
-  @chat_id Application.compile_env(:kucoin_pump, :telegram_chat_id)
-  @telegram_bot_token Application.compile_env(:kucoin_pump, :telegram_bot_token)
   @data_window_in_minutes Application.compile_env(:kucoin_pump, :data_window_in_minutes)
+  
+  # These values will be accessed at runtime instead of compile time
+  defp telegram_chat_id, do: Application.get_env(:kucoin_pump, :telegram_chat_id)
+  defp telegram_bot_token, do: Application.get_env(:kucoin_pump, :telegram_bot_token)
+  defp telegram_enabled, do: Application.get_env(:kucoin_pump, :telegram_enabled, false)
 
   def start_link_price_changes() do
     GenServer.start_link(Storage.MapStorage, %{}, name: PriceChanges)
@@ -50,7 +59,7 @@ defmodule Application.ProcessMessage do
         prev_price: prev_price,
         price: price,
         total_trades: total_trades,
-        isPrinted: false,
+        is_printed: false,
         event_time: event_time
       }
 
@@ -61,7 +70,7 @@ defmodule Application.ProcessMessage do
         prev_price: price,
         price: price,
         total_trades: total_trades,
-        isPrinted: false,
+        is_printed: false,
         event_time: event_time
       }
 
@@ -76,88 +85,142 @@ defmodule Application.ProcessMessage do
     for {symbol, price_change} <- GenServer.call(PriceChanges, :all) do
       price_change_perc = PriceChange.get_price_change_perc(price_change)
 
-      if not price_change.isPrinted and abs(price_change_perc) >= @min_perc do
-        price_change = %PriceChange{price_change | isPrinted: true}
+      # Handle significant price changes
+      if should_process_price_change?(price_change, price_change_perc) do
+        # Mark as printed
+        price_change = %PriceChange{price_change | is_printed: true}
 
-        price_group =
-          if GenServer.call(PriceGroups, {:has_key, symbol}) do
-            %PriceGroup{
-              tick_count: tick_count,
-              total_price_change: total_price_change,
-              relative_price_change: relative_price_change
-            } = GenServer.call(PriceGroups, {:get_item, symbol})
+        # Get or create price group
+        price_group = get_or_create_price_group(symbol, price_change, price_change_perc)
 
-            price_group = %PriceGroup{
-              symbol: symbol,
-              tick_count: tick_count + 1,
-              total_price_change: total_price_change + abs(price_change_perc),
-              relative_price_change: relative_price_change + price_change_perc,
-              last_price: price_change.price,
-              last_event_time: price_change.event_time,
-              isPrinted: false
-            }
+        # Store in database
+        save_price_group(price_group)
 
-            price_group
-          else
-            data_price_change =
-              case Repo.one(
-                     from(p in KucoinPump.PriceGroup,
-                       select: %{
-                         tick_count: p.tick_count,
-                         relative_price_change: p.relative_price_change,
-                         total_price_change: p.total_price_change
-                       },
-                       where: p.symbol == ^symbol,
-                       order_by: [desc: p.last_event_time],
-                       limit: 1
-                     )
-                   ) do
-                nil ->
-                  %{
-                    tick_count: 1,
-                    relative_price_change: price_change_perc,
-                    total_price_change: abs(price_change_perc)
-                  }
-
-                %{
-                  tick_count: tick_count,
-                  relative_price_change: relative_price_change,
-                  total_price_change: total_price_change
-                } ->
-                  %{
-                    tick_count: tick_count + 1,
-                    relative_price_change: relative_price_change + price_change_perc,
-                    total_price_change: total_price_change + abs(price_change_perc)
-                  }
-              end
-
-            %PriceGroup{
-              symbol: symbol,
-              # tick_count: data_price_change.tick_count,
-              tick_count: 1,
-              total_price_change: data_price_change.total_price_change,
-              relative_price_change: data_price_change.relative_price_change,
-              last_price: price_change.price,
-              last_event_time: price_change.event_time,
-              isPrinted: false
-            }
-          end
-
-        case %KucoinPump.PriceGroup{}
-             |> KucoinPump.PriceGroup.changeset(Map.from_struct(price_group))
-             |> KucoinPump.Repo.insert() do
-          {:ok, _} -> "Inserted"
-          {:error, changeset} -> IO.inspect(changeset.errors)
-        end
-
+        # Update in-memory cache
         GenServer.cast(PriceGroups, {:set_item, symbol, price_group})
       end
 
-      price_change = %PriceChange{price_change | prev_price: price_change.price}
-      GenServer.cast(PriceChanges, {:set_item, symbol, price_change})
+      # Always update the prev_price for next comparison
+      update_price_change(symbol, price_change)
     end
 
     :ok
+  end
+
+  @spec! should_process_price_change?(PriceChange.t(), float()) :: boolean()
+  defp should_process_price_change?(price_change, price_change_perc) do
+    price_change.is_printed == false and abs(price_change_perc) >= @min_perc
+  end
+
+  @spec! get_or_create_price_group(String.t(), PriceChange.t(), float()) :: PriceGroup.t()
+  defp get_or_create_price_group(symbol, price_change, price_change_perc) do
+    if GenServer.call(PriceGroups, {:has_key, symbol}) do
+      get_existing_price_group(symbol, price_change, price_change_perc)
+    else
+      create_new_price_group(symbol, price_change, price_change_perc)
+    end
+  end
+
+  @spec! get_existing_price_group(String.t(), PriceChange.t(), float()) :: PriceGroup.t()
+  defp get_existing_price_group(symbol, price_change, price_change_perc) do
+    # Get existing price group from cache
+    %PriceGroup{
+      tick_count: tick_count,
+      total_price_change: total_price_change,
+      relative_price_change: relative_price_change
+    } = GenServer.call(PriceGroups, {:get_item, symbol})
+
+    # Update with new values
+    %PriceGroup{
+      symbol: symbol,
+      tick_count: tick_count + 1,
+      total_price_change: total_price_change + abs(price_change_perc),
+      relative_price_change: relative_price_change + price_change_perc,
+      last_price: price_change.price,
+      last_event_time: price_change.event_time,
+      is_printed: false
+    }
+  end
+
+  @spec! create_new_price_group(String.t(), PriceChange.t(), float()) :: PriceGroup.t()
+  defp create_new_price_group(symbol, price_change, price_change_perc) do
+    # Query for existing data from database
+    data_price_change = query_existing_price_group(symbol, price_change_perc)
+
+    # Create new price group with fetched or default data
+    %PriceGroup{
+      symbol: symbol,
+      tick_count: data_price_change.tick_count,
+      total_price_change: data_price_change.total_price_change,
+      relative_price_change: data_price_change.relative_price_change,
+      last_price: price_change.price,
+      last_event_time: price_change.event_time,
+      is_printed: false
+    }
+  end
+
+  @spec! query_existing_price_group(String.t(), float()) :: map()
+  defp query_existing_price_group(symbol, price_change_perc) do
+    query_result =
+      Repo.one(
+        from(p in KucoinPump.PriceGroup,
+          select: %{
+            tick_count: p.tick_count,
+            relative_price_change: p.relative_price_change,
+            total_price_change: p.total_price_change
+          },
+          where: p.symbol == ^symbol,
+          order_by: [desc: p.last_event_time],
+          limit: 1
+        )
+      )
+
+    process_query_result(query_result, price_change_perc)
+  end
+
+  @spec! process_query_result(map() | nil, float()) :: map()
+  defp process_query_result(nil, price_change_perc) do
+    # No previous data found, create new entry
+    %{
+      tick_count: 1,
+      relative_price_change: price_change_perc,
+      total_price_change: abs(price_change_perc)
+    }
+  end
+
+  defp process_query_result(
+         %{
+           tick_count: tick_count,
+           relative_price_change: relative_price_change,
+           total_price_change: total_price_change
+         },
+         price_change_perc
+       ) do
+    # Update existing data with new change
+    %{
+      tick_count: tick_count + 1,
+      relative_price_change: relative_price_change + price_change_perc,
+      total_price_change: total_price_change + abs(price_change_perc)
+    }
+  end
+
+  @spec! save_price_group(PriceGroup.t()) :: String.t() | nil
+  defp save_price_group(price_group) do
+    case %KucoinPump.PriceGroup{}
+         |> KucoinPump.PriceGroup.changeset(Map.from_struct(price_group))
+         |> KucoinPump.Repo.insert() do
+      {:ok, _} ->
+        "Inserted"
+
+      {:error, changeset} ->
+        Logger.error("Error inserting price group: #{inspect(changeset.errors)}")
+    end
+  end
+
+  @spec! update_price_change(String.t(), PriceChange.t()) :: :ok
+  defp update_price_change(symbol, price_change) do
+    price_change = %PriceChange{price_change | prev_price: price_change.price}
+    GenServer.cast(PriceChanges, {:set_item, symbol, price_change})
   end
 
   @spec! extract_message_from_query_result(map()) :: list()
@@ -193,8 +256,8 @@ defmodule Application.ProcessMessage do
 
   @spec! query_compute_price_diff(integer()) :: list()
   def query_compute_price_diff(time_interval_in_minutes) do
-    Ecto.Adapters.SQL.query!(
-      KucoinPump.Repo,
+    SQL.query!(
+      Repo,
       "select * from compute_price_diff(#{time_interval_in_minutes})"
     )
     |> extract_message_from_query_result
@@ -242,70 +305,78 @@ defmodule Application.ProcessMessage do
 
   @spec! print_result_recursive(list(), list(), String.t(), boolean(), boolean()) :: boolean()
   def print_result_recursive([head | tail], sorted_price_groups, msg, any_printed, header_printed) do
-    {any_printed, header_printed} =
-      if head < length(sorted_price_groups) do
-        max_price_group = Enum.at(sorted_price_groups, head)
+    # Skip processing if index is out of bounds
+    if head >= length(sorted_price_groups) do
+      print_result_recursive(tail, sorted_price_groups, msg, any_printed, header_printed)
+    else
+      # Get the price group at the current index
+      max_price_group = Enum.at(sorted_price_groups, head)
 
-        {any_printed, header_printed} =
-          if not max_price_group.isPrinted do
-            header_printed =
-              if not header_printed do
-                IO.puts(msg)
-                header_printed = true
-                header_printed
-              else
-                header_printed
-              end
+      # Process only if not printed yet
+      {new_any_printed, new_header_printed} =
+        process_price_group(max_price_group, msg, any_printed, header_printed)
 
-            IO.inspect(max_price_group)
-
-            send_message(
-              "#{msg} #{PriceDisplay.to_string(max_price_group)}",
-              max_price_group.symbol
-            )
-
-            # max_price_group = %PriceDisplay{max_price_group | isPrinted: true}
-            # GenServer.cast(PriceDisplay, {:set_item, max_price_group.symbol, max_price_group})
-            any_printed = true
-
-            {any_printed, header_printed}
-          else
-            {any_printed, header_printed}
-          end
-
-        {any_printed, header_printed}
-      else
-        {any_printed, header_printed}
-      end
-
-    print_result_recursive(tail, sorted_price_groups, msg, any_printed, header_printed)
+      # Continue with the next item
+      print_result_recursive(tail, sorted_price_groups, msg, new_any_printed, new_header_printed)
+    end
   end
 
   def print_result_recursive([], _sorted_price_groups, _msg, any_printed, _header_printed) do
     any_printed
   end
 
+  @spec! process_price_group(map(), String.t(), boolean(), boolean()) :: {boolean(), boolean()}
+  defp process_price_group(price_group, msg, any_printed, header_printed) do
+    # Skip if already printed
+    if price_group.is_printed do
+      {any_printed, header_printed}
+    else
+      # Print header if needed
+      updated_header_printed = maybe_print_header(msg, header_printed)
+
+      # Log and send message
+      Logger.debug("Processing price group: #{inspect(price_group)}")
+      send_message("#{msg} #{PriceDisplay.to_display_string(price_group)}", price_group.symbol)
+
+      # Mark as printed and return updated state
+      {true, updated_header_printed}
+    end
+  end
+
+  @spec! maybe_print_header(String.t(), boolean()) :: boolean()
+  defp maybe_print_header(msg, false) do
+    IO.puts(msg)
+    true
+  end
+
+  defp maybe_print_header(_msg, true), do: true
+
   @spec! send_message(String.t(), String.t()) :: :ok
   def send_message(message, symbol) do
-    case Telegram.Api.request(@telegram_bot_token, "sendMessage",
-           chat_id: @chat_id,
-           text: message,
-           disable_notification: true,
-           parse_mode: "markdown",
-           reply_markup: %{
-             inline_keyboard: [
-               [
-                 %{
-                   text: "📈",
-                   url:
-                     "https://www.tradingview.com/chart/?symbol=KUCOIN:#{String.replace(symbol, "-", "")}&interval=1440"
-                 }
+    if telegram_enabled() do
+      case Telegram.Api.request(telegram_bot_token(), "sendMessage",
+             chat_id: telegram_chat_id(),
+             text: message,
+             disable_notification: true,
+             parse_mode: "markdown",
+             reply_markup: %{
+               inline_keyboard: [
+                 [
+                   %{
+                     text: "📈",
+                     url:
+                       "https://www.tradingview.com/chart/?symbol=KUCOIN:#{String.replace(symbol, "-", "")}&interval=1440"
+                   }
+                 ]
                ]
-             ]
-           }
-         ) do
-      {:ok, _} -> :ok
-      {:error, reason} -> IO.inspect(reason)
+             }
+           ) do
+        {:ok, _} -> :ok
+        {:error, reason} -> Logger.error("Error sending Telegram message: #{inspect(reason)}")
+      end
+    else
+      # Telegram notifications are disabled
+      :ok
     end
 
     :ok

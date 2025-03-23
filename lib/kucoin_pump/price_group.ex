@@ -1,4 +1,8 @@
 defmodule KucoinPump.PriceGroup do
+  @moduledoc """
+  Ecto schema representing price groups in the database.
+  Defines field mappings and validations for storing price data.
+  """
   use Ecto.Schema
   import Ecto.Changeset
 

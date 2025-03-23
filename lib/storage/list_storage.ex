@@ -1,4 +1,8 @@
 defmodule Storage.ListStorage do
+  @moduledoc """
+  A GenServer implementation of a simple list storage.
+  Provides basic operations for storing and retrieving lists of items.
+  """
   use TypeCheck
   use GenServer
 

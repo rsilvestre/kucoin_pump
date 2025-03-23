@@ -9,8 +9,10 @@ config :kucoin_pump,
   # min percentage change
   min_perc: 0.05,
   compute_refresh_rate: 1_000,
-  display_refresh_rate: 1_000,
-  data_window_in_minutes: 60
+  display_refresh_rate: 10_000,
+  data_window_in_minutes: 60,
+  # enable or disable Telegram notifications
+  telegram_enabled: false
 
 config :kucoin_pump,
   ecto_repos: [KucoinPump.Repo]

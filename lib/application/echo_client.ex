@@ -1,6 +1,10 @@
 defmodule Application.EchoClient do
-  alias Models.Message
+  @moduledoc """
+  WebSocket client for the KuCoin exchange API.
+  Manages connection, subscription to market tickers, and message handling.
+  """
   alias Application.ProcessMessage
+  alias Models.Message
 
   use TypeCheck
   use WebSockex

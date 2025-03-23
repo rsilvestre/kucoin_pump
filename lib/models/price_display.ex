@@ -1,4 +1,8 @@
 defmodule Models.PriceDisplay do
+  @moduledoc """
+  Defines a struct for displaying price data with various metrics like RSI, price changes, trend analysis.
+  Includes formatting functions for displaying price data in the terminal.
+  """
   use TypeCheck
 
   @enforce_keys [
@@ -25,7 +29,7 @@ defmodule Models.PriceDisplay do
             reg_slope: nil,
             reg_intercept: nil,
             trend: nil,
-            isPrinted: false
+            is_printed: false
 
   @type! t() :: %__MODULE__{
            symbol: String.t(),
@@ -39,7 +43,7 @@ defmodule Models.PriceDisplay do
            reg_slope: float(),
            reg_intercept: float(),
            trend: String.t(),
-           isPrinted: boolean()
+           is_printed: boolean()
          }
 
   @spec! new(map()) :: %__MODULE__{}
@@ -88,7 +92,7 @@ defmodule Models.PriceDisplay do
     |> __MODULE__.new()
   end
 
-  def to_string(%__MODULE__{
+  def to_display_string(%__MODULE__{
         symbol: symbol,
         rsi: rsi,
         relative_price_change: relative_price_change,
@@ -101,53 +105,56 @@ defmodule Models.PriceDisplay do
         reg_intercept: reg_intercept,
         trend: trend
       }) do
-    "Symbol:#{symbol}\t Time:#{last_event_time}\t RSI:#{:io_lib.format("~.2f", [rsi])}\t RPCh:#{:io_lib.format("~.2f", [relative_price_change])}\t NOE:#{nomber_of_event}\t LP:#{:io_lib.format("~.2f", [last_price])}\t LTPCh:#{:io_lib.format("~.2f", [last_total_price_change])}\t LRPCh:#{:io_lib.format("~.2f", [last_relative_price_change])}\t Slope:#{:io_lib.format("~.5f", [reg_slope])}\t Intercept:#{:io_lib.format("~.2f", [reg_intercept])}\t Trend:#{trend}"
+    "Symbol:#{symbol}\t Time:#{last_event_time}\t RSI:#{format_float(rsi)}\t RPCh:#{format_float(relative_price_change)}\t NOE:#{nomber_of_event}\t LP:#{format_float(last_price)}\t LTPCh:#{format_float(last_total_price_change)}\t LRPCh:#{format_float(last_relative_price_change)}\t Slope:#{format_float(reg_slope, "~.5f")}\t Intercept:#{format_float(reg_intercept)}\t Trend:#{trend || "unknown"}"
   end
+
+  @spec! format_float(any(), String.t()) :: String.t()
+  def format_float(value, format \\ "~.2f")
+  def format_float(nil, _format), do: "N/A"
+
+  def format_float(value, format) when is_float(value),
+    do: to_string(:io_lib.format(format, [value]))
+
+  def format_float(value, _format) when is_integer(value), do: to_string(value)
+  def format_float(_value, _format), do: "N/A"
 
   def to_table(%__MODULE__{} = price_display) do
     [
       price_display.symbol,
       price_display.last_event_time,
-      :io_lib.format("~.2f", [price_display.rsi]),
-      :io_lib.format("~.2f", [price_display.relative_price_change]),
+      format_float(price_display.rsi),
+      format_float(price_display.relative_price_change),
       price_display.nomber_of_event,
-      :io_lib.format("~.2f", [price_display.last_price]),
-      :io_lib.format("~.2f", [price_display.last_total_price_change]),
-      :io_lib.format("~.2f", [price_display.last_relative_price_change]),
-      :io_lib.format("~.2f", [price_display.reg_slope]),
-      :io_lib.format("~.2f", [price_display.reg_intercept]),
-      price_display.trend
+      format_float(price_display.last_price),
+      format_float(price_display.last_total_price_change),
+      format_float(price_display.last_relative_price_change),
+      format_float(price_display.reg_slope),
+      format_float(price_display.reg_intercept),
+      price_display.trend || "unknown"
     ]
   end
 
   defimpl Inspect do
-    def inspect(
-          %Models.PriceDisplay{
-            symbol: symbol,
-            rsi: rsi,
-            relative_price_change: relative_price_change,
-            nomber_of_event: nomber_of_event,
-            last_price: last_price,
-            last_total_price_change: last_total_price_change,
-            last_relative_price_change: last_relative_price_change,
-            last_event_time: last_event_time,
-            reg_slope: reg_slope,
-            reg_intercept: reg_intercept,
-            trend: trend
-          },
-          isColored
-        ) do
-      ret_val =
-        "Symbol:#{symbol}\t Time:#{last_event_time}\t RSI:#{:io_lib.format("~.2f", [rsi])}\t RPCh:#{:io_lib.format("~.2f", [relative_price_change])}\t NOE:#{nomber_of_event}\t LP:#{:io_lib.format("~.2f", [last_price])}\t LTPCh:#{:io_lib.format("~.2f", [last_total_price_change])}\t LRPCh:#{:io_lib.format("~.2f", [last_relative_price_change])}\t Slope:#{:io_lib.format("~.2f", [reg_slope])}\t Intercept:#{:io_lib.format("~.2f", [reg_intercept])}\t Trend:#{trend}"
+    def inspect(price_display, isColored) do
+      # Simply delegate to to_display_string
+      display_string = Models.PriceDisplay.to_display_string(price_display)
 
       if isColored do
-        if relative_price_change < 0 do
-          "\e[1;31m" <> ret_val <> "\e[0m"
-        else
-          "\e[1;32m" <> ret_val <> "\e[0m"
+        cond do
+          is_nil(price_display.relative_price_change) ->
+            # Yellow for unknown/nil values
+            "\e[1;33m" <> display_string <> "\e[0m"
+
+          price_display.relative_price_change < 0 ->
+            # Red for negative
+            "\e[1;31m" <> display_string <> "\e[0m"
+
+          true ->
+            # Green for positive
+            "\e[1;32m" <> display_string <> "\e[0m"
         end
       else
-        ret_val
+        display_string
       end
     end
   end

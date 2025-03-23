@@ -1,4 +1,8 @@
 defmodule KucoinPump.Release do
+  @moduledoc """
+  Release tasks for database migrations and rollbacks.
+  Used when deploying the application in production.
+  """
   @app :kucoin_pump
 
   def migrate do

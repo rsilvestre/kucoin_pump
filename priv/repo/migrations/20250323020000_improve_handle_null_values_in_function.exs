@@ -1,4 +1,4 @@
-defmodule KucoinPump.Repo.Migrations.FixComputePriceDiffFunctionAddReg do
+defmodule KucoinPump.Repo.Migrations.ImproveHandleNullValuesInFunction do
   use Ecto.Migration
 
   def change do
@@ -47,14 +47,14 @@ defmodule KucoinPump.Repo.Migrations.FixComputePriceDiffFunctionAddReg do
       price_sums AS (
         SELECT
         price_diff.symbol AS symbol,
-        SUM(CASE WHEN price_change > 0 THEN price_change ELSE 0 END) AS positive_sum,
-        SUM(CASE WHEN price_change < 0 THEN ABS(price_change) ELSE 0 END) AS negative_sum,
-        SUM(price_change) AS price_change,
+        COALESCE(SUM(CASE WHEN price_change > 0 THEN price_change ELSE 0 END), 0) AS positive_sum,
+        COALESCE(SUM(CASE WHEN price_change < 0 THEN ABS(price_change) ELSE 0 END), 0) AS negative_sum,
+        COALESCE(SUM(price_change), 0) AS price_change,
         MAX(last_price) AS last_price,
         MAX(total_price_change) AS total_price_change,
         MAX(relative_price_change) AS relative_price_change,
         MAX(last_event_time) AS last_event_time,
-        SUM(1) AS nb,
+        COUNT(*) AS nb,
             REGR_SLOPE(last_price, EXTRACT(EPOCH FROM last_event_time)) AS slope,
             REGR_INTERCEPT(last_price, EXTRACT(EPOCH FROM last_event_time)) AS intercept
         FROM
@@ -65,11 +65,14 @@ defmodule KucoinPump.Repo.Migrations.FixComputePriceDiffFunctionAddReg do
       rsiy AS (
         SELECT
           price_sums.symbol AS symbol,
-          CASE WHEN negative_sum != 0 THEN
+          CASE WHEN COALESCE(negative_sum, 0) != 0 THEN
             100 - (100 / (1 + (positive_sum / negative_sum)))
           ELSE 100
           END AS rsix,
-          price_change / (last_price - price_change) * 100 AS pchx,
+          CASE WHEN last_price != price_change THEN 
+            price_change / NULLIF((last_price - price_change), 0) * 100
+          ELSE 0
+          END AS pchx,
           nb,
         last_price,
         total_price_change,
@@ -91,10 +94,15 @@ defmodule KucoinPump.Repo.Migrations.FixComputePriceDiffFunctionAddReg do
         rsiy.last_event_time,
         rsiy.slope,
         rsiy.intercept,
-        CASE WHEN rsiy.slope > 0 THEN 'positive' WHEN rsiy.slope < 0 THEN 'negative' ELSE 'steady' END
+        CASE 
+          WHEN rsiy.slope IS NULL THEN 'unknown'
+          WHEN rsiy.slope > 0 THEN 'positive' 
+          WHEN rsiy.slope < 0 THEN 'negative' 
+          ELSE 'steady' 
+        END as trend
       FROM rsiy
-      WHERE rsiy.rsix != 0 --AND nb > 10
-      ORDER BY abs(rsiy.pchx) DESC;
+      WHERE rsiy.rsix IS NOT NULL -- Instead of rsiy.rsix != 0
+      ORDER BY abs(COALESCE(rsiy.pchx, 0)) DESC;
     END;
     $$;
     """)

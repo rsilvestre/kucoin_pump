@@ -1,6 +1,9 @@
 defmodule Application.ProcessMessageTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   doctest Application.ProcessMessage
+
+  # Tag this test to exclude database connections
+  @moduletag :extract_message
 
   test "extract message from query result" do
     result = %Postgrex.Result{

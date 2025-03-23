@@ -1,4 +1,8 @@
 defmodule Helpers.SchedulerDisplay do
+  @moduledoc """
+  GenServer that schedules periodic display of price changes.
+  Runs at intervals defined by the application's display_refresh_rate setting.
+  """
   use TypeCheck
   use GenServer
 
